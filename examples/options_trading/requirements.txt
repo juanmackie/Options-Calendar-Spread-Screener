@@ -1,0 +1,20 @@
+# Python dependencies for the Options Trading example
+
+# Core OpenEvolve dependencies will be inherited from the main project.
+
+# Add any libraries needed for financial data analysis,
+# options pricing, or interacting with the chosen backtesting API.
+# Examples (uncomment and specify versions as needed):
+pandas
+numpy
+PyYAML
+openai>=1.0.0
+# requests
+# scipy
+# mplfinance
+# py_vollib_vectorized
+
+# For the evaluator, if connecting to a specific API,
+# its client library might be needed here.
+# e.g., ib_insync (for Interactive Brokers)
+# e.g., td-ameritrade-python-api (for TD Ameritrade)

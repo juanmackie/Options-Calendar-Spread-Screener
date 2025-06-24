@@ -1,0 +1,113 @@
+# OpenEvolve Configuration for Options Trading Algorithm Evolution
+
+# General settings
+max_iterations: 1000                  # Maximum number of evolution iterations
+checkpoint_interval: 50               # Save checkpoints every N iterations
+log_level: "INFO"                     # Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+random_seed: 42                       # Random seed for reproducibility
+
+# LLM configuration
+llm:
+  # API configuration
+  api_base: "https://api.openai.com/v1"  # Replace if using a different provider or local LLM
+  api_key: null                       # API key (defaults to OPENAI_API_KEY or provider-specific env variable)
+
+  # Models for evolution - REPLACE THESE WITH YOUR CHOSEN MODELS
+  models:
+    - name: "gpt-4o" # Example: Replace with your desired primary model
+      weight: 0.8
+    - name: "gpt-3.5-turbo"  # Example: Replace with your desired secondary model
+      weight: 0.2
+
+  # Models for LLM feedback (if use_llm_feedback is true in evaluator config)
+  # Defaults to the same as evolution models if not specified.
+  # evaluator_models:
+  #   - name: "gpt-3.5-turbo"
+  #     weight: 1.0
+
+  # Generation parameters
+  temperature: 0.7                    # Temperature for generation (higher = more creative)
+  top_p: 0.95                         # Top-p sampling parameter
+  max_tokens: 4096                    # Maximum tokens to generate (ensure it's enough for code + diffs)
+
+  # Request parameters
+  timeout: 120                        # Timeout for LLM API requests in seconds
+  retries: 3                          # Number of retries for failed LLM requests
+  retry_delay: 10                     # Delay between retries in seconds
+
+# Prompt configuration
+prompt:
+  template_dir: null                  # Custom directory for prompt templates (optional)
+  system_message: |
+    You are an AI assistant specialized in quantitative finance and algorithmic options trading.
+    Your goal is to evolve a Python-based options trading algorithm.
+    The algorithm is defined within a function `generate_trades_logic(historical_data, current_holdings, parameters)`.
+    It receives historical market data (including options chains with greeks) and current portfolio holdings.
+    It must return a list of trade orders (e.g., BUY/SELL, contract_symbol, quantity, price, order_type).
+
+    Focus on improving the algorithm's profitability, risk-adjusted returns (e.g., Sharpe ratio),
+    and consistency, while managing drawdown.
+    Analyze the provided backtesting metrics (total_profit_loss, sharpe_ratio, max_drawdown_pct, win_rate_daily, number_of_trades)
+    from previous iterations to make informed decisions.
+
+    Consider strategies involving:
+    - Different option strategies (e.g., spreads, straddles, strangles, covered calls, protective puts, single legs).
+    - Use of technical indicators derived from historical_data.
+    - Volatility analysis (e.g., trading based on IV rank/percentile).
+    - Use of option greeks (delta, gamma, theta, vega) for risk management or trade selection.
+    - Dynamic position sizing and risk management rules.
+    - Trade entry and exit criteria.
+    - Parameter tuning within the `parameters` dict if the algorithm uses them.
+
+    The `historical_data` is a list of snapshots, where each snapshot is a dictionary containing `timestamp`, `underlying_price`, and `options_chain`.
+    Each entry in `options_chain` is a dictionary with keys like `symbol`, `type`, `strike`, `expiry`, `bid`, `ask`, `iv`, `delta`, etc.
+    `current_holdings` is a list of dictionaries, e.g., [{'symbol': 'SPY251231C00500000', 'quantity': 10, 'entry_price_per_contract': 9.5}].
+    Trades should be dicts: {'action': 'BUY'/'SELL', 'contract_symbol': str, 'quantity': int, 'price': float, 'order_type': 'MARKET'/'LIMIT'}
+
+    If using diff-based evolution, provide changes in the specified SEARCH/REPLACE format.
+    If using full-rewrite, provide the complete new `generate_trades_logic` function.
+
+  num_top_programs: 3                 # Number of top-performing programs to include in prompt
+  num_diverse_programs: 2             # Number of diverse programs to include
+
+  # Artifact rendering in prompt
+  include_artifacts: true             # Whether to include artifacts (like trade logs or detailed backtest reports) in the prompt
+  max_artifact_bytes: 8192            # Max size of artifacts to include in prompt (8KB)
+
+# Database configuration
+database:
+  db_path: null                       # Path to persist database (null = in-memory only, recommended for testing)
+                                      # For persistent storage: "./openevolve_output/options_trading_db"
+  in_memory: true                     # Keep database in memory for faster access during a run
+  log_prompts: true                   # Log all prompts and LLM responses (can consume disk space)
+
+  population_size: 100                # Max programs in memory (adjust based on complexity and resources)
+  archive_size: 20                    # Size of elite archive
+  num_islands: 3                      # Number of islands for island model
+  migration_interval: 25              # Migrate between islands every N generations
+  migration_rate: 0.1                 # Fraction of top programs to migrate
+
+  elite_selection_ratio: 0.1
+  exploration_ratio: 0.3              # Increased exploration for complex problem spaces
+  exploitation_ratio: 0.6
+
+# Evaluator configuration
+evaluator:
+  timeout: 600                        # Max backtesting time per algorithm in seconds. ADJUST BASED ON YOUR API SPEED AND DATA SIZE.
+  max_retries: 1                      # Max retries for evaluation if it fails (e.g., transient API error)
+
+  cascade_evaluation: false           # Options trading backtests are usually all-or-nothing,
+                                      # but could be enabled if quick pre-checks are possible.
+  # cascade_thresholds: [0.1, 0.5]    # Example thresholds if cascade_evaluation is true
+
+  parallel_evaluations: 2             # Number of parallel backtests. ADJUST BASED ON YOUR CPU/API LIMITS.
+                                      # Be cautious with high parallelism if API has strict rate limits.
+
+  use_llm_feedback: false             # Set to true to use an LLM to critique/score the code itself (experimental)
+  # llm_feedback_weight: 0.1          # Weight for LLM feedback in final score if enabled
+
+  enable_artifacts: true              # Allow evaluator to return artifacts (e.g., trade logs, P&L charts)
+
+# Evolution settings
+diff_based_evolution: true            # Use diffs for changes (True) or full rewrites (False)
+max_code_length: 20000                # Maximum allowed code length in characters for the evolved block.

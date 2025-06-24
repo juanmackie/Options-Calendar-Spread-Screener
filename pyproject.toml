@@ -18,6 +18,8 @@ dependencies = [
     "numpy>=1.22.0",
     "tqdm>=4.64.0",
     "flask",
+    "pyyaml>=6.0", # Ensure PyYAML is listed
+    "openai>=1.0.0", # Added openai
 ]
 
 [project.optional-dependencies]
