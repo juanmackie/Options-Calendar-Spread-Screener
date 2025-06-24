@@ -3,21 +3,22 @@ Here's the content formatted as Markdown:
 ```markdown
 # Calendar Spread Screener Overview
 
-This Python script is designed to scan the US options market for potentially profitable weekly calendar spread opportunities. It leverages real-time market data from the Polygon.io API to identify trades that fit a specific set of criteria based on established options trading principles for this strategy.
+This Python script is designed to scan the US options market for potentially profitable weekly calendar spread opportunities. It leverages real-time market data from the Polygon.io API to identify trades that fit a specific set of criteria.
 
-The core goal of the script is to find **At-The-Money (ATM) call calendar spreads** where the trader receives a net credit. This strategy aims to profit from the accelerated time decay (theta) of the short-term option relative to the long-term option.
+The core goal of the script is to find **At-The-Money (ATM) calendar spreads (calls, puts, or both)** where the trader receives a net credit. This strategy aims to profit from the accelerated time decay (theta) of the short-term option relative to the long-term option, and potentially from changes in implied volatility.
 
 ## Features
 
 - **Automated Scanning**: Scans a predefined list of stocks and ETFs for opportunities.
+- **Configurable Contract Types**: Can scan for call spreads, put spreads, or both.
 - **Dynamic Expiry Dates**: Automatically calculates the next two weekly (Friday) expiration dates to construct the spreads.
-- **ATM Strike Identification**: Fetches the current stock price to find the closest At-The-Money strike price.
+- **ATM Strike Identification**: Fetches the current stock price to find the closest At-The-Money strike price for the selected contract type(s).
 - **Intelligent Filtering**: Applies a multi-point check to each potential spread:
-  - **Liquidity Check**: Ensures options have sufficient volume and open interest to be easily tradable.
-  - **Net Credit**: Filters for spreads that provide an upfront credit to the trader.
-  - **Implied Volatility (IV) Differential**: Looks for situations where the near-term option has a higher IV than the far-term option, which is ideal for this strategy.
-  - **Positive Theta**: Confirms that the overall position has positive time decay, meaning the position should profit as time passes, all else being equal.
-- **Clear Output**: Presents the results in a clean, readable table format using pandas.
+  - **Liquidity Check**: Ensures options have sufficient volume and open interest.
+  - **Net Credit**: Filters for spreads that provide a minimum upfront credit.
+  - **Implied Volatility (IV) Differential**: Seeks a higher IV in the near-term option compared to the far-term, by a configurable margin.
+  - **Positive Theta**: Optionally ensures the overall position has positive time decay.
+- **Clear Output**: Presents the results in a clean, readable table format using pandas, sorted by net credit.
 
 ## Requirements
 
@@ -43,7 +44,7 @@ pip install pandas requests
 
 ### Configure the API Key
 
-Open the `options_screener_script.py` file.
+Open the `screener.py` file.
 
 Find the line:
 
@@ -66,21 +67,48 @@ POLYGON_API_KEY = os.environ.get('POLYGON_API_KEY', 'AbcDeFg12345')
 Once the setup is complete, you can run the screener from your terminal:
 
 ```bash
-python options_screener_script.py
+python screener.py
 ```
 
 The script will print its progress as it scans each ticker and will display a final table of any opportunities that match the criteria.
 
 ## Customization
 
-You can easily tailor the screener to your preferences by modifying the **SCREENING PARAMETERS** section at the top of the script.
+You can easily tailor the screener to your preferences by modifying the **SCREENING PARAMETERS** section at the top of the `screener.py` script.
 
-### Example Customizations
+### Core Parameters:
+- `STOCKS_TO_SCAN`: A list of stock or ETF tickers to scan.
+  - Example: `STOCKS_TO_SCAN = ['MSFT', 'GOOGL', 'AMZN', 'SPY']`
+- `CONTRACT_TYPE_TO_SCAN`: Determines the type of options to scan.
+  - `'call'`: Scans for call calendar spreads.
+  - `'put'`: Scans for put calendar spreads.
+  - `'both'`: Scans for both call and put calendar spreads.
+  - Example: `CONTRACT_TYPE_TO_SCAN = 'call'`
 
+### Filtering Criteria:
+- `MIN_OPTION_VOLUME`: Minimum daily trading volume for each option leg.
+  - Example: `MIN_OPTION_VOLUME = 100`
+- `MIN_OPTION_OPEN_INTEREST`: Minimum open interest for each option leg.
+  - Example: `MIN_OPTION_OPEN_INTEREST = 500`
+- `MIN_NET_CREDIT`: Minimum net credit required for the spread (e.g., 0.01 for at least $1 credit per share).
+  - Example: `MIN_NET_CREDIT = 0.01`
+- `MIN_IV_PREMIUM_NEAR_OVER_FAR`: Minimum difference by which the near-term option's Implied Volatility (IV) must exceed the far-term option's IV. A positive value means the near-term IV must be higher.
+  - Example: `MIN_IV_PREMIUM_NEAR_OVER_FAR = 0.0` (Near IV must be >= Far IV)
+  - Example: `MIN_IV_PREMIUM_NEAR_OVER_FAR = 0.05` (Near IV must be at least 5% higher than Far IV)
+- `REQUIRE_POSITIVE_NET_THETA`: Boolean. If `True`, the spread must have a net positive theta (time decay works in your favor).
+  - Example: `REQUIRE_POSITIVE_NET_THETA = True`
+
+### Example Configuration Block:
 ```python
-STOCKS_TO_SCAN = ['MSFT', 'GOOGL', 'AMZN', 'IWM']  # Change the list of stock tickers to scan
-MIN_VOLUME = 100  # Adjust the minimum required daily trading volume for an option contract
-MIN_OPEN_INTEREST = 50  # Adjust the minimum required open interest for an option contract
+# --- SCREENING PARAMETERS ---
+STOCKS_TO_SCAN = ['AAPL', 'TSLA', 'NVDA', 'QQQ', 'SPY', 'AMD']
+CONTRACT_TYPE_TO_SCAN = 'call' # Options: 'call', 'put', 'both'
+
+MIN_OPTION_VOLUME = 50
+MIN_OPTION_OPEN_INTEREST = 200
+MIN_NET_CREDIT = 0.05 # Require at least $0.05 credit
+MIN_IV_PREMIUM_NEAR_OVER_FAR = 0.02 # Near IV should be at least 2% > Far IV
+REQUIRE_POSITIVE_NET_THETA = True
 ```
 
 ## Disclaimer
